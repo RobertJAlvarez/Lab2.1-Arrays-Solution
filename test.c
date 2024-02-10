@@ -7,12 +7,15 @@
 #include <time.h>      //time()
 #include <unistd.h>    //fork()
 
-#include "ArrayList.h"
-#include "my_string.h"
-#include "tokenizer.h"
+#include "./h/ArrayList.h"
+#include "./h/my_string.h"
+#include "./h/tokenizer.h"
+
+// This is to include my tokenize implementation
+char **my_tokenize(char *str, const char *delims);
 
 #define N_TESTS ((size_t)1000)
-#define MAX_LENGTH ((size_t)16)
+#define MAX_LENGTH ((size_t)32)
 
 static void error_no_memory(void) {
   fprintf(stderr, "No more memory available.\n");
@@ -20,13 +23,14 @@ static void error_no_memory(void) {
 }
 
 static char *randstring(size_t length) {
-  static char charset[] =
+  static const char charset[] =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`~!@#$%^&*"
       "()_+-=[]{}\\|;:,<.>/?";
   char *randomString = NULL;
 
   if (!length) length = 1;
-  if ((randomString = malloc(sizeof(char) * (length + 1))) == NULL) return NULL;
+  if ((randomString = (char *)malloc(sizeof(char) * (length + 1))) == NULL)
+    return NULL;
 
   for (size_t i = 0; i < length; i++) {
     int key = rand() % (int)(sizeof(charset) - 1);
@@ -178,13 +182,13 @@ double test_mem_cpy(void) {
     // Add 1 to length to account for the null character
     length += 1;
 
-    if ((s2 = malloc(length)) == NULL) {
+    if ((s2 = (char *)malloc(sizeof(char) * length)) == NULL) {
       error_no_memory();
       free(s1);
       return 0.0;
     }
 
-    if ((s3 = malloc(length)) == NULL) {
+    if ((s3 = (char *)malloc(sizeof(char) * length)) == NULL) {
       error_no_memory();
       free(s1);
       free(s2);
@@ -374,7 +378,52 @@ double test_tokenize(void) {
   size_t passed = 0;
   const double points = 4.;
 
+  char **t1, **t2;
+  char *s1, *s2;
+  char *delim;
+
   printf("Function %s() ", __func__);
+
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Get 4 random delimiter characters
+    if ((delim = randstring(8)) == NULL) {
+      error_no_memory();
+      return 0.0;
+    }
+
+    // Make s1
+    if ((s1 = randstring((size_t)rand() % MAX_LENGTH)) == NULL) {
+      error_no_memory();
+      free(delim);
+      return 0.0;
+    }
+
+    // Make a copy of s1
+    if ((s2 = strdup(s1)) == NULL) {
+      error_no_memory();
+      free(delim);
+      free(s1);
+      return 0.0;
+    }
+
+    t1 = tokenize(s1, delim);
+    t2 = my_tokenize(s2, delim);
+
+    // Assume passed and subtract if fail
+    passed++;
+
+    // Iterate over both arrays to validate identical strings
+    for (; (*t1 != NULL) && (*t2 != NULL); t1++, t2++) {
+      if (strcmp(*t1, *t2) != 0) {
+        passed--;
+        break;
+      }
+    }
+
+    free(s1);
+    free(s2);
+    free(delim);
+  }
 
   return points * ((double)passed) / ((double)N_TESTS);
 }

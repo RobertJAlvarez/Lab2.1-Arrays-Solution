@@ -1,4 +1,6 @@
-#include "my_string.h"
+#include <stdio.h>
+
+#include "my_string.h"  //str_chr() str_sep()
 #include "tokenizer.h"
 
 /* Return the number of tokens in str by using delims for the
