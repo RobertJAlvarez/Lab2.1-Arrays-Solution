@@ -11,11 +11,11 @@ all: compile
 
 compile: $(OBJS)
 
-test:
-	${CC} $(CFLAGS) -c -o $@ $<
+test: $(OBJS) test.o
+	${CC} -o $@ $^
 
 clean:
-	rm -f *.o
+	rm -f *.o test
 
 ArrayList.o: ArrayList.c ArrayList.h
 my_string.o: my_string.c my_string.h
