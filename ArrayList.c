@@ -64,6 +64,15 @@ int AL_free(ArrayList_t *AL, int (*delete_data)(void *data)) {
   return 0;
 }
 
+void AL_print(ArrayList_t *AL, void (*print_data)(void *data)) {
+  void **p;
+  size_t i;
+
+  if (AL == NULL) return NULL;
+
+  for (p = AL->array, i = 0; i < AL->len; i++, p++) print_data(*p);
+}
+
 void *AL_get_at(ArrayList_t *AL, size_t i) {
   if (AL == NULL) return NULL;
   if (i >= AL->len) return NULL;
@@ -73,7 +82,7 @@ void *AL_get_at(ArrayList_t *AL, size_t i) {
 
 int AL_set_at(ArrayList_t *AL, size_t i, void *elem,
               void *(*copy_data)(void *data), int (*delete_data)(void *data)) {
-  if (AL == NULL) return 0;
+  if (AL == NULL) return 1;
   if (i >= AL->len) return 1;
 
   if (delete_data(AL->array[i])) return 1;
@@ -84,16 +93,14 @@ int AL_set_at(ArrayList_t *AL, size_t i, void *elem,
 
 int AL_insert_first(ArrayList_t *AL, void *elem,
                     void *(*copy_data)(void *data)) {
-  if (AL == NULL) return 0;
+  if (AL == NULL) return 1;
   // If size == len then double array size
   if (AL->__size == AL->len) {
     // If doubling array size fail, return 1
     if (__AL_double_size(AL) == 1) return 1;
   }
 
-  for (size_t i = AL->len; i > 0; i--) {
-    AL->array[i] = AL->array[i - 1];
-  }
+  for (size_t i = AL->len; i > 0; i--) AL->array[i] = AL->array[i - 1];
 
   AL->array[0] = copy_data(elem);
   AL->len++;
@@ -102,14 +109,12 @@ int AL_insert_first(ArrayList_t *AL, void *elem,
 }
 
 int AL_delete_first(ArrayList_t *AL, int (*delete_data)(void *data)) {
-  if (AL == NULL) return 0;
+  if (AL == NULL) return 1;
 
   if (delete_data(AL->array[0])) return 1;
   AL->len--;
 
-  for (size_t i = 0; i < AL->len; i++) {
-    AL->array[i] = AL->array[i + 1];
-  }
+  for (size_t i = 0; i < AL->len; i++) AL->array[i] = AL->array[i + 1];
 
   if (AL->len * 4 <= AL->__size) __AL_half_size(AL);
 
@@ -118,7 +123,7 @@ int AL_delete_first(ArrayList_t *AL, int (*delete_data)(void *data)) {
 
 int AL_insert_last(ArrayList_t *AL, void *elem,
                    void *(*copy_data)(void *data)) {
-  if (AL == NULL) return 0;
+  if (AL == NULL) return 1;
   if (AL->len == AL->__size) {
     if (__AL_double_size(AL) == 1) return 1;
   }
@@ -130,7 +135,7 @@ int AL_insert_last(ArrayList_t *AL, void *elem,
 }
 
 int AL_delete_last(ArrayList_t *AL, int (*delete_data)(void *data)) {
-  if (AL == NULL) return 0;
+  if (AL == NULL) return 1;
   if (AL->len == 0) return 0;
 
   if (delete_data(AL->array[AL->len - 1])) return 1;
@@ -143,17 +148,30 @@ int AL_delete_last(ArrayList_t *AL, int (*delete_data)(void *data)) {
 
 int AL_insert_at(ArrayList_t *AL, size_t i, void *elem,
                  void *(*copy_data)(void *data)) {
-  if (AL == NULL) return 0;
+  if (AL == NULL) return 1;
   if (i >= AL->len) return AL_insert_last(AL, elem, copy_data);
+
+  // Double size array size if needed
   if (AL->len == AL->__size) {
     if (__AL_double_size(AL) == 1) return 1;
   }
 
-  for (size_t k = AL->len; k > i; k++) {
-    AL->array[k] = AL->array[k - 1];
-  }
+  for (size_t k = AL->len; k > i; k++) AL->array[k] = AL->array[k - 1];
 
   AL->array[i] = copy_data(elem);
+
+  return 0;
+}
+
+int AL_delete_at(ArrayList_t *AL, size_t i, int (*delete_data)(void *)) {
+  if (AL == NULL) return 1;
+  if (i >= AL->len) return 1;
+
+  if (delete_data(AL->array[i]) != 0) return 1;
+
+  for (size_t k = i + 1, k < array->len; k++) AL->array[k - 1] = AL->array[k];
+
+  AL->len--;
 
   return 0;
 }

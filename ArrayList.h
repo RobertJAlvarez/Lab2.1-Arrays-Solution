@@ -19,6 +19,11 @@ ArrayList_t *AL_init(void);
  */
 int AL_free(ArrayList_t *AL, int (*delete_data)(void *));
 
+/* Print every element in AL->array.
+ * Run time: O(n)
+ */
+void AL_print(ArrayList_t *AL, void (*print_data)(void *));
+
 /* Retrieve the element i in AL->array.
  * Run time: O(1).
  */
@@ -51,9 +56,14 @@ int AL_insert_last(ArrayList_t *AL, void *elem, void *(*copy_data)(void *));
 int AL_delete_last(ArrayList_t *AL, int (*delete_data)(void *));
 
 /* Insert elem at index i in AL.
- * Run time: O(1) amortize.
+ * Run time: O(n).
  */
 int AL_insert_at(ArrayList_t *AL, size_t i, void *elem,
                  void *(*copy_data)(void *));
+
+/* Delete the element at index i in AL.
+ * Run time: O(n).
+ */
+int AL_delete_at(ArrayList_t *AL, size_t i, int (*delete_data)(void *));
 
 #endif
