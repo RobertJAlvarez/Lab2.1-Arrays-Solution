@@ -3,6 +3,8 @@
 
 #include "ArrayList.h"
 
+#define MIN_ELEM ((size_t)4)
+
 static int error_no_mem(void) {
   fprintf(stderr, "Error: no memory left.\n");
   return 1;
@@ -13,7 +15,7 @@ static int __AL_double_size(ArrayList_t *AL) {
 
   if (AL == NULL) return 1;
 
-  p = realloc(AL->array, AL->__size * 2);
+  p = realloc(AL->array, sizeof(void *) * AL->__size * 2);
   if (p == NULL) return error_no_mem();
 
   AL->__size *= 2;
@@ -27,7 +29,9 @@ static int __AL_half_size(ArrayList_t *AL) {
 
   if (AL == NULL) return 1;
 
-  p = realloc(AL->array, AL->__size / 2);
+  if (AL->__size <= MIN_ELEM) return 0;
+
+  p = realloc(AL->array, (sizeof(void *) * AL->__size) / 2);
   if (p == NULL) return 1;
 
   AL->__size /= 2;
@@ -41,21 +45,19 @@ ArrayList_t *AL_init(void) {
 
   if ((AL = (ArrayList_t *)malloc(sizeof(ArrayList_t))) == NULL) error_no_mem();
 
-  AL->array = NULL;
-  AL->__size = 0;
+  // Start array with size of 4
+  AL->array = malloc(MIN_ELEM * sizeof(void *));
+  AL->__size = MIN_ELEM;
   AL->len = 0;
 
   return AL;
 }
 
 int AL_free(ArrayList_t *AL, int (*delete_data)(void *data)) {
-  void **p;
-  size_t i;
-
   if (AL == NULL) return 0;
 
-  for (p = AL->array, i = 0; i < AL->len; i++, p++) {
-    if (delete_data(*p)) return 1;
+  for (size_t i = 0; i < AL->len; i++) {
+    if (delete_data(AL->array[i])) return 1;
   }
 
   free(AL->array);
@@ -65,12 +67,9 @@ int AL_free(ArrayList_t *AL, int (*delete_data)(void *data)) {
 }
 
 void AL_print(ArrayList_t *AL, void (*print_data)(void *data)) {
-  void **p;
-  size_t i;
+  if (AL == NULL) return;
 
-  if (AL == NULL) return NULL;
-
-  for (p = AL->array, i = 0; i < AL->len; i++, p++) print_data(*p);
+  for (size_t i = 0; i < AL->len; i++) print_data(AL->array[i]);
 }
 
 void *AL_get_at(ArrayList_t *AL, size_t i) {
@@ -156,20 +155,23 @@ int AL_insert_at(ArrayList_t *AL, size_t i, void *elem,
     if (__AL_double_size(AL) == 1) return 1;
   }
 
-  for (size_t k = AL->len; k > i; k++) AL->array[k] = AL->array[k - 1];
+  for (size_t k = AL->len; k > i; k--) AL->array[k] = AL->array[k - 1];
 
   AL->array[i] = copy_data(elem);
+  AL->len++;
 
   return 0;
 }
 
 int AL_delete_at(ArrayList_t *AL, size_t i, int (*delete_data)(void *)) {
+  size_t k;
+
   if (AL == NULL) return 1;
   if (i >= AL->len) return 1;
 
   if (delete_data(AL->array[i]) != 0) return 1;
 
-  for (size_t k = i + 1, k < array->len; k++) AL->array[k - 1] = AL->array[k];
+  for (k = i + 1; k < AL->len; k++) AL->array[k - 1] = AL->array[k];
 
   AL->len--;
 

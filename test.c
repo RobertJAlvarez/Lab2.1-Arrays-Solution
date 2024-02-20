@@ -13,6 +13,8 @@
 
 // This is to include my tokenize implementation
 char **my_tokenize(char *str, const char *delims);
+FILE *my_tmp;
+FILE *s_tmp;
 
 #define N_TESTS ((size_t)1000)
 #define MAX_LENGTH ((size_t)32)
@@ -28,7 +30,7 @@ static char *randstring(size_t length) {
       "()_+-=[]{}\\|;:,<.>/?";
   char *randomString = NULL;
 
-  if (!length) length = 1;
+  if (length == 0) length = 1;
   if ((randomString = (char *)malloc(sizeof(char) * (length + 1))) == NULL)
     return NULL;
 
@@ -42,49 +44,526 @@ static char *randstring(size_t length) {
   return randomString;
 }
 
-double test_AL_get_at(void) {
-  printf("Function %s() ", __func__);
+static int compare_files(FILE *fp1, FILE *fp2) {
+  char ch1 = '\0';
+  char ch2 = '\0';
 
-  return 0.0;
+  // iterate loop till end of file
+  while (ch1 != EOF && ch2 != EOF) {
+    if (ch1 != ch2) return 1;
+
+    // fetching character until end of file
+    ch1 = (char)getc(fp1);
+    ch2 = (char)getc(fp2);
+  }
+
+  return 0;
 }
 
-double test_AL_set_at(void) {
-  printf("Function %s() ", __func__);
+void *copy_str(void *elem) { return (void *)strdup((const char *)elem); }
 
-  return 0.0;
+int delete_str(void *elem) {
+  free(elem);
+  return 0;
 }
 
-double test_AL_insert_first(void) {
+void print_str(void *elem) { fprintf(s_tmp, "%s\n", (char *)elem); }
+
+static double test_AL_get_at(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const int N_STR = 10;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+  int get_k;
+  int add;
+
   printf("Function %s() ", __func__);
 
-  return 0.0;
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      arr_str[j] = randstring((size_t)(rand() % 2));
+      if (arr_str[j] == NULL) {
+        error_no_memory();
+        for (size_t k = 0; k < j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+
+      if (AL_insert_last(AL, arr_str[j], copy_str) == 1) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Choose half of the entries at random
+    add = 1;
+    for (size_t j = 0; j < N_STR / 2; j++) {
+      get_k = rand() % N_STR;
+      if (strcmp(arr_str[get_k], AL_get_at(AL, (size_t)get_k)) != 0) add = 0;
+    }
+
+    passed += ((size_t)add);
+
+    // Free local strings
+    for (size_t j = 0; j < N_STR; j++) free(arr_str[j]);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_AL_delete_first(void) {
+static double test_AL_set_at(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const int N_STR = 10;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+  int set_k;
+
   printf("Function %s() ", __func__);
 
-  return 0.0;
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      arr_str[j] = randstring((size_t)(rand() % 2));
+      if (arr_str[j] == NULL) {
+        error_no_memory();
+        for (size_t k = 0; k < j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+
+      if (AL_insert_last(AL, arr_str[j], copy_str) == 1) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Overwrite half of the words at random
+    for (int j = 0; j < N_STR / 2; j++) {
+      set_k = rand() % N_STR;
+      // Overwrite arr_str[set_k]
+      free(arr_str[set_k]);
+      arr_str[set_k] = randstring((size_t)(rand() % 2));
+      // Set k element in AL
+      if (AL_set_at(AL, (size_t)set_k, arr_str[set_k], copy_str, delete_str) ==
+          1) {
+        error_no_memory();
+        for (size_t k = 0; k < N_STR; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Open temporary file in my_tmp
+    my_tmp = tmpfile();
+
+    // Print expected output to my_tmp
+    for (int j = 0; j < N_STR; j++) fprintf(my_tmp, "%s\n", arr_str[j]);
+    rewind(my_tmp);
+
+    // Free local strings
+    for (size_t j = 0; j < N_STR; j++) free(arr_str[j]);
+
+    // Open temporary file in s_tmp
+    s_tmp = tmpfile();
+
+    // Print student function output to s_tmp
+    AL_print(AL, print_str);
+    rewind(s_tmp);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+
+    // if == 0 then files are identical
+    if (compare_files(my_tmp, s_tmp) == 0) passed += 1;
+
+    // Empty files
+    fclose(my_tmp);
+    fclose(s_tmp);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_AL_insert_last(void) {
+static double test_AL_insert_first(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const int N_STR = 40;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+
   printf("Function %s() ", __func__);
 
-  return 0.0;
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      arr_str[j] = randstring((size_t)(rand() % 2));
+      if (arr_str[j] == NULL) {
+        error_no_memory();
+        for (size_t k = 0; k < j; k++) free(arr_str[k]);
+      }
+
+      if (AL_insert_first(AL, arr_str[j], copy_str) == 1) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Open temporary file in my_tmp
+    my_tmp = tmpfile();
+
+    // Print expected output to my_tmp
+    for (int j = N_STR - 1; j >= 0; j--) fprintf(my_tmp, "%s\n", arr_str[j]);
+    rewind(my_tmp);
+
+    // Free local strings
+    for (size_t j = 0; j < N_STR; j++) free(arr_str[j]);
+
+    // Open temporary file in s_tmp
+    s_tmp = tmpfile();
+
+    // Print student function output to s_tmp
+    AL_print(AL, print_str);
+    rewind(s_tmp);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+
+    // if == 0 then files are identical
+    if (compare_files(my_tmp, s_tmp) == 0) passed += 1;
+
+    // Empty files
+    fclose(my_tmp);
+    fclose(s_tmp);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_AL_delete_last(void) {
+static double test_AL_delete_first(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const int N_STR = 10;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+  int delete_k;
+
   printf("Function %s() ", __func__);
 
-  return 0.0;
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      arr_str[j] = randstring((size_t)(rand() % 2));
+      if (arr_str[j] == NULL) {
+        error_no_memory();
+        for (size_t k = 0; k < j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+
+      if (AL_insert_last(AL, arr_str[j], copy_str) == 1) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Decide how many to delete
+    delete_k = 1 + (rand() % N_STR);
+
+    // Open temporary file in my_tmp
+    my_tmp = tmpfile();
+
+    // Print expected output to my_tmp
+    for (int j = delete_k; j < N_STR; j++) {
+      fprintf(my_tmp, "%s\n", arr_str[j]);
+    }
+    rewind(my_tmp);
+
+    // Free local strings
+    for (size_t j = 0; j < N_STR; j++) free(arr_str[j]);
+
+    // Open temporary file in s_tmp
+    s_tmp = tmpfile();
+
+    // Remove delete_k elements in AL
+    for (int j = 0; j < delete_k; j++) {
+      AL_delete_first(AL, delete_str);
+    }
+
+    // Print student function output to s_tmp
+    AL_print(AL, print_str);
+    rewind(s_tmp);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+
+    // if == 0 then files are identical
+    if (compare_files(my_tmp, s_tmp) == 0) passed += 1;
+
+    // Empty files
+    fclose(my_tmp);
+    fclose(s_tmp);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_AL_insert_at(void) {
+static double test_AL_insert_last(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const int N_STR = 40;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+
   printf("Function %s() ", __func__);
 
-  return 0.0;
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      arr_str[j] = randstring((size_t)(rand() % 2));
+      if (arr_str[j] == NULL) {
+        error_no_memory();
+        for (size_t k = 0; k < j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+
+      if (AL_insert_last(AL, arr_str[j], copy_str) == 1) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Open temporary file in my_tmp
+    my_tmp = tmpfile();
+
+    // Print expected output to my_tmp
+    for (int j = 0; j < N_STR; j++) fprintf(my_tmp, "%s\n", arr_str[j]);
+    rewind(my_tmp);
+
+    // Free local strings
+    for (size_t j = 0; j < N_STR; j++) free(arr_str[j]);
+
+    // Open temporary file in s_tmp
+    s_tmp = tmpfile();
+
+    // Print student function output to s_tmp
+    AL_print(AL, print_str);
+    rewind(s_tmp);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+
+    // if == 0 then files are identical
+    if (compare_files(my_tmp, s_tmp) == 0) passed += 1;
+
+    // Empty files
+    fclose(my_tmp);
+    fclose(s_tmp);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_str_len(void) {
+static double test_AL_delete_last(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const int N_STR = 10;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+  int delete_k;
+
+  printf("Function %s() ", __func__);
+
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      arr_str[j] = randstring((size_t)(rand() % 2));
+      if (arr_str[j] == NULL) {
+        error_no_memory();
+        for (size_t k = 0; k < j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+
+      if (AL_insert_last(AL, arr_str[j], copy_str) == 1) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Decide how many to delete
+    delete_k = 1 + (rand() % N_STR);
+
+    // Open temporary file in my_tmp
+    my_tmp = tmpfile();
+
+    // Print expected output to my_tmp
+    for (int j = 0; j < N_STR - delete_k; j++) {
+      fprintf(my_tmp, "%s\n", arr_str[j]);
+    }
+    rewind(my_tmp);
+
+    // Free local strings
+    for (size_t j = 0; j < N_STR; j++) free(arr_str[j]);
+
+    // Open temporary file in s_tmp
+    s_tmp = tmpfile();
+
+    // Remove delete_k elements in AL
+    for (int j = 0; j < delete_k; j++) {
+      AL_delete_last(AL, delete_str);
+    }
+
+    // Print student function output to s_tmp
+    AL_print(AL, print_str);
+    rewind(s_tmp);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+
+    // if == 0 then files are identical
+    if (compare_files(my_tmp, s_tmp) == 0) passed += 1;
+
+    // Empty files
+    fclose(my_tmp);
+    fclose(s_tmp);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
+}
+
+static double test_AL_insert_at(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const int N_STR = 40;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+  size_t my_at_k;
+  size_t s_at_k;
+
+  printf("Function %s() ", __func__);
+
+  for (size_t i = 0; i < N_TESTS; i++) {
+    // Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      s_at_k = ((size_t)rand() % N_STR);
+
+      // If location is at j or after we just append it
+      if (s_at_k >= j) {
+        my_at_k = j;
+      }
+      // Otherwise we move all from s_at_k to j one to the right
+      else {
+        for (size_t k = j; k > s_at_k; k--) {
+          arr_str[k] = arr_str[k - 1];
+        }
+        my_at_k = s_at_k;
+      }
+
+      arr_str[my_at_k] = randstring((size_t)(rand() % 2));
+      if (arr_str[my_at_k] == NULL) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) {
+          if (k == my_at_k) continue;
+          free(arr_str[k]);
+        }
+        return 0.0;
+      }
+
+      if (AL_insert_at(AL, s_at_k, arr_str[my_at_k], copy_str) == 1) {
+        error_no_memory();
+        for (size_t k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Open temporary file in my_tmp
+    my_tmp = tmpfile();
+
+    // Print expected output to my_tmp
+    for (int j = 0; j < N_STR; j++) fprintf(my_tmp, "%s\n", arr_str[j]);
+    rewind(my_tmp);
+
+    // Free local strings
+    for (size_t j = 0; j < N_STR; j++) free(arr_str[j]);
+
+    // Open temporary file in s_tmp
+    s_tmp = tmpfile();
+
+    // Print student function output to s_tmp
+    AL_print(AL, print_str);
+    rewind(s_tmp);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+
+    // if == 0 then files are identical
+    if (compare_files(my_tmp, s_tmp) == 0) passed += 1;
+
+    // Empty files
+    fclose(my_tmp);
+    fclose(s_tmp);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
+}
+
+static double test_str_len(void) {
   size_t passed = 0;
   const double points = 4.;
   char *s;
@@ -117,9 +596,10 @@ static void *_make_i_str(char *s1, size_t length, size_t i) {
   return s2;
 }
 
-double test_str_cmp(void) {
+static double test_str_cmp(void) {
   size_t passed = 0;
   const double points = 4.;
+
   char *s1, *s2;
   size_t length, n;
   int cmp1, cmp2;
@@ -162,7 +642,7 @@ double test_str_cmp(void) {
   return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_mem_cpy(void) {
+static double test_mem_cpy(void) {
   size_t passed = 0;
   const double points = 4.;
 
@@ -251,19 +731,19 @@ static double _test_str_charset(int is_str_chr) {
   return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_str_chr(void) {
+static double test_str_chr(void) {
   printf("Function %s() ", __func__);
 
   return _test_str_charset(/* is_str_chr = */ 1);
 }
 
-double test_str_p_brk(void) {
+static double test_str_p_brk(void) {
   printf("Function %s() ", __func__);
 
   return _test_str_charset(/* is_str_chr = */ 0);
 }
 
-double test_str_sep(void) {
+static double test_str_sep(void) {
   size_t passed = 0;
   const double points = 4.;
 
@@ -315,7 +795,7 @@ double test_str_sep(void) {
   return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_str_cat(void) {
+static double test_str_cat(void) {
   size_t passed = 0;
   const double points = 4.;
 
@@ -374,7 +854,7 @@ double test_str_cat(void) {
   return points * ((double)passed) / ((double)N_TESTS);
 }
 
-double test_tokenize(void) {
+static double test_tokenize(void) {
   size_t passed = 0;
   const double points = 4.;
 
