@@ -57,7 +57,7 @@ char *str_sep(char **stringp, const char *delim) {
   }
 
   *token_end = '\0';
-  *stringp = &token_end[1];
+  *stringp = token_end + 1;
 
   return token_start;
 }

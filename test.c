@@ -20,7 +20,7 @@ FILE *s_tmp;
 #define MAX_LENGTH ((size_t)32)
 
 static void error_no_memory(void) {
-  fprintf(stderr, "No more memory available.\n");
+  fprintf(stderr, "No more memory available. Errorno: %d\n", errno);
   return;
 }
 
@@ -563,6 +563,92 @@ static double test_AL_insert_at(void) {
   return points * ((double)passed) / ((double)N_TESTS);
 }
 
+static double test_AL_delete_at(void) {
+  size_t passed = 0;
+  const double points = 3.;
+
+  const size_t N_STR = 5;
+  char *arr_str[N_STR];
+  ArrayList_t *AL;
+  size_t delete_k, k;
+
+  printf("Function %s() ", __func__);
+
+  for (size_t i = 0; i < N_TESTS; i++) {
+    //  Make AL
+    if ((AL = AL_init()) == NULL) {
+      printf("AL_init was not implemented.\n");
+      return 0.0;
+    }
+
+    // Generate N_STR random strings
+    for (size_t j = 0; j < N_STR; j++) {
+      arr_str[j] = randstring((size_t)(rand() % 2));
+      if (arr_str[j] == NULL) {
+        error_no_memory();
+        for (k = 0; k < j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+
+      if (AL_insert_last(AL, arr_str[j], copy_str) == 1) {
+        error_no_memory();
+        for (k = 0; k <= j; k++) free(arr_str[k]);
+        return 0.0;
+      }
+    }
+
+    // Decide how many to delete
+    delete_k = ((size_t)rand()) % N_STR;
+    if (delete_k == 0) delete_k = 1;
+
+    // Delete delete_k at random
+    for (size_t j = 0; j < delete_k; j++) {
+      // Get a valid location k
+      while ((k = ((size_t)rand()) % N_STR) >= N_STR - j)
+        ;
+
+      // Delete element at k
+      free(arr_str[k]);
+      // Shift to the left the elements after k
+      for (size_t l = k + 1; l < N_STR - j; l++) arr_str[l - 1] = arr_str[l];
+
+      // Free it in AL
+      AL_delete_at(AL, (size_t)k, delete_str);
+    }
+
+    // Open temporary file in my_tmp
+    my_tmp = tmpfile();
+
+    // Print expected output to my_tmp
+    for (size_t j = ((size_t)0); j < N_STR - delete_k; j++) {
+      fprintf(my_tmp, "%s\n", arr_str[j]);
+    }
+    rewind(my_tmp);
+
+    // Free local strings
+    for (size_t j = ((size_t)0); j < N_STR - delete_k; j++) free(arr_str[j]);
+
+    // Open temporary file in s_tmp
+    s_tmp = tmpfile();
+
+    // Print student function output to s_tmp
+    AL_print(AL, print_str);
+    rewind(s_tmp);
+
+    // Free AL copies
+    AL_free(AL, delete_str);
+
+    // if == 0 then files are identical
+    if (compare_files(my_tmp, s_tmp) == 0) passed += 1;
+
+    // Empty files
+    fclose(my_tmp);
+    fclose(s_tmp);
+  }
+
+  return points * ((double)passed) / ((double)N_TESTS);
+}
+
 static double test_str_len(void) {
   size_t passed = 0;
   const double points = 4.;
@@ -856,7 +942,7 @@ static double test_str_cat(void) {
 
 static double test_tokenize(void) {
   size_t passed = 0;
-  const double points = 4.;
+  const double points = 15.;
 
   char **t1, **t2;
   char *s1, *s2;
@@ -916,9 +1002,10 @@ int main(void) {
   double (*functions[])(void) = {
       &test_AL_get_at,       &test_AL_set_at,      &test_AL_insert_first,
       &test_AL_delete_first, &test_AL_insert_last, &test_AL_delete_last,
-      &test_AL_insert_at,    &test_str_len,        &test_str_cmp,
-      &test_mem_cpy,         &test_str_chr,        &test_str_p_brk,
-      &test_str_sep,         &test_str_cat,        &test_tokenize};
+      &test_AL_insert_at,    &test_AL_delete_at,   &test_str_len,
+      &test_str_cmp,         &test_mem_cpy,        &test_str_chr,
+      &test_str_p_brk,       &test_str_sep,        &test_str_cat,
+      &test_tokenize};
 
   pid_t pid;
 

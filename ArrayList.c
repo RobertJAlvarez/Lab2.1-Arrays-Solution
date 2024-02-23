@@ -175,5 +175,7 @@ int AL_delete_at(ArrayList_t *AL, size_t i, int (*delete_data)(void *)) {
 
   AL->len--;
 
+  if (AL->len * 4 <= AL->__size) __AL_half_size(AL);
+
   return 0;
 }

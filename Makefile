@@ -26,6 +26,7 @@ my_string.o: my_string.c my_string.h
 tokenizer.o: tokenizer.c tokenizer.h my_string.h
 	${CC} $(CFLAGS) -c -Dtokenize=my_tokenize -o $@ $<
 test.o: test.c my_string.h tokenizer.h ArrayList.h ./h/my_string.h ./h/tokenizer.h ./h/ArrayList.h
+main.o: main.c tokenizer.h
 
 $(S_OBJS):
 	mkdir ./h
