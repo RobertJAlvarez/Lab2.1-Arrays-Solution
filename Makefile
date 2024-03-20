@@ -1,37 +1,23 @@
 CC   = cc
-OBJS = ArrayList.o my_string.o tokenizer.o
-S_OBJS = ./o/ArrayList.o ./o/my_string.o ./o/tokenizer.o
+OBJS = my_string.o
 
 CFLAGS = -I./h -O3 -g3 -Wall -Wextra -Werror=format-security -Werror=implicit-function-declaration \
          -Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes -Wwrite-strings -Wconversion
 
-all: compile
+all: $(OBJS)
 
-%.o: %.c
-	${CC} $(CFLAGS) -c -o $@ $<
+test: $(OBJS) ArrayList.o test.o
+	${CC} -o $@ $^
 
-compile: $(OBJS)
-
-test: $(OBJS) ./o/tokenizer.o test.o
+test_tokenize: $(OBJS) tokenizer.o test_tokenize.o
 	${CC} -o $@ $^
 
 clean:
-	(cd student && make clean)
-	rm -rf ./h
-	rm -rf ./o
-	rm -f *.o test
+	rm -f *.o test test_tokenize
 
 ArrayList.o: ArrayList.c ArrayList.h
 my_string.o: my_string.c my_string.h
 tokenizer.o: tokenizer.c tokenizer.h my_string.h
-	${CC} $(CFLAGS) -c -Dtokenize=my_tokenize -o $@ $<
-test.o: test.c my_string.h tokenizer.h ArrayList.h ./h/my_string.h ./h/tokenizer.h ./h/ArrayList.h
-main.o: main.c tokenizer.h
-
-$(S_OBJS):
-	mkdir ./h
-	mkdir ./o
-	(cd student && make)
-	(cd student && cp *.h ../h)
-	(cd student && mv *.o ../o)
+test.o: test.c my_string.h ArrayList.h
+test_tokenize.o: test_tokenize.c my_string.h tokenizer.h
 

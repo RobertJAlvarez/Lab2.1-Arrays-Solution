@@ -7,12 +7,9 @@
 #include <time.h>      //time()
 #include <unistd.h>    //fork()
 
-#include "./h/ArrayList.h"
-#include "./h/my_string.h"
-#include "./h/tokenizer.h"
+#include "ArrayList.h"
+#include "my_string.h"
 
-// This is to include my tokenize implementation
-char **my_tokenize(char *str, const char *delims);
 FILE *my_tmp;
 FILE *s_tmp;
 
@@ -940,60 +937,6 @@ static double test_str_cat(void) {
   return points * ((double)passed) / ((double)N_TESTS);
 }
 
-static double test_tokenize(void) {
-  size_t passed = 0;
-  const double points = 15.;
-
-  char **t1, **t2;
-  char *s1, *s2;
-  char *delim;
-
-  printf("Function %s() ", __func__);
-
-  for (size_t i = 0; i < N_TESTS; i++) {
-    // Get 4 random delimiter characters
-    if ((delim = randstring(8)) == NULL) {
-      error_no_memory();
-      return 0.0;
-    }
-
-    // Make s1
-    if ((s1 = randstring((size_t)rand() % MAX_LENGTH)) == NULL) {
-      error_no_memory();
-      free(delim);
-      return 0.0;
-    }
-
-    // Make a copy of s1
-    if ((s2 = strdup(s1)) == NULL) {
-      error_no_memory();
-      free(delim);
-      free(s1);
-      return 0.0;
-    }
-
-    t1 = tokenize(s1, delim);
-    t2 = my_tokenize(s2, delim);
-
-    // Assume passed and subtract if fail
-    passed++;
-
-    // Iterate over both arrays to validate identical strings
-    for (; (*t1 != NULL) && (*t2 != NULL); t1++, t2++) {
-      if (strcmp(*t1, *t2) != 0) {
-        passed--;
-        break;
-      }
-    }
-
-    free(s1);
-    free(s2);
-    free(delim);
-  }
-
-  return points * ((double)passed) / ((double)N_TESTS);
-}
-
 static double *func_points;
 
 int main(void) {
@@ -1004,8 +947,7 @@ int main(void) {
       &test_AL_delete_first, &test_AL_insert_last, &test_AL_delete_last,
       &test_AL_insert_at,    &test_AL_delete_at,   &test_str_len,
       &test_str_cmp,         &test_mem_cpy,        &test_str_chr,
-      &test_str_p_brk,       &test_str_sep,        &test_str_cat,
-      &test_tokenize};
+      &test_str_p_brk,       &test_str_sep,        &test_str_cat};
 
   pid_t pid;
 
